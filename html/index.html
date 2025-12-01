@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova Advent Calendar</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none; /* Désactiver la sélection de texte */
+      -webkit-user-select: none; /* Safari */
+      -moz-user-select: none; /* Firefox */
+      -ms-user-select: none; /* IE/Edge */
+    }
+
+    body {
+      font-family: 'Mountains of Christmas', cursive;
+      height: 100vh;
+      overflow: hidden;
+      background: transparent;
+      position: relative;
+    }
+
+    /* Container principal - Calendrier */
+    #calendar-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: none;
+      z-index: 1000;
+
+      /* Image de fond désactivée (commentée pour alléger) */
+      /* background: url('images/FnJbmo1.jpeg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat; */
+
+      /* Fond semi-transparent pour voir le jeu derrière */
+      /* backdrop-filter ne fonctionne pas avec FiveM NUI */
+      background: rgba(0, 0, 0, 0.60); /* Noir 60% transparent */
+    }
+
+    #calendar-container.visible {
+      display: block;
+    }
+
+    /* Container du cadeau - Superposition */
+    #gift-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(-20deg, #a8dadc 20%, #457b9d 20%, #457b9d 30%, #1d3557 30%, #1d3557 70%, #457b9d 70%, #457b9d 80%, #a8dadc 80% );
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      z-index: 2000;
+    }
+
+    #gift-container.visible {
+      display: flex;
+    }
+
+    /* Texte d'instruction */
+    .instruction {
+      color: white;
+      font-size: 1.8rem;
+      text-align: center;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+      transition: opacity 0.5s;
+      opacity: 0;
+      animation: fadeInInstruction 0.3s ease-in 0.4s forwards, pulseInstruction 2s infinite 0.7s;
+      margin-bottom: 20px;
+    }
+
+    @keyframes fadeInInstruction {
+      to { opacity: 1; }
+    }
+
+    @keyframes pulseInstruction {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.9; }
+    }
+
+    .instruction.hidden {
+      opacity: 0 !important;
+      animation: none;
+    }
+
+    /* Flocons de neige */
+    .snowflake {
+      position: absolute;
+      top: -100px; /* Plus haut pour qu'ils soient hors écran au départ */
+      color: white;
+      font-size: 1em;
+      animation: fall linear infinite;
+      opacity: 0.8;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    @keyframes fall {
+      from { transform: translateY(0); }
+      to { transform: translateY(calc(100vh + 100px)); } /* Compenser le top négatif */
+    }
+
+    /* Grille du calendrier */
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 20px;
+      height: 100vh;
+      padding: 20px;
+      grid-template-areas:
+        "title title title day5 day17 day15"
+        "title title title day11 day20 day16"
+        "title title title day1 day18 day12"
+        "day6 day22 day14 day24 day24 day4"
+        "day10 day21 day2 day24 day24 day8"
+        "day3 day9 day7 day13 day23 day19";
+    }
+
+    .title {
+      grid-area: title;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px;
+    }
+
+    .title h1 {
+      font-size: 5rem;
+      line-height: 1;
+    }
+
+    .title-1 {
+      color: #FFD700;
+      display: block;
+      transform: rotate(-8deg);
+      text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .title-2 {
+      color: #4169E1;
+      display: block;
+      transform: rotate(-5deg);
+      font-style: italic;
+      text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .title-3 {
+      color: #000000;
+      display: block;
+      transform: rotate(-3deg);
+      text-shadow: 4px 4px 8px rgba(255, 255, 255, 0.5);
+    }
+
+    /* Cases du calendrier */
+    .day-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-height: 120px;
+    }
+
+    .day-item[data-day="1"] { grid-area: day1; }
+    .day-item[data-day="2"] { grid-area: day2; }
+    .day-item[data-day="3"] { grid-area: day3; }
+    .day-item[data-day="4"] { grid-area: day4; }
+    .day-item[data-day="5"] { grid-area: day5; }
+    .day-item[data-day="6"] { grid-area: day6; }
+    .day-item[data-day="7"] { grid-area: day7; }
+    .day-item[data-day="8"] { grid-area: day8; }
+    .day-item[data-day="9"] { grid-area: day9; }
+    .day-item[data-day="10"] { grid-area: day10; }
+    .day-item[data-day="11"] { grid-area: day11; }
+    .day-item[data-day="12"] { grid-area: day12; }
+    .day-item[data-day="13"] { grid-area: day13; }
+    .day-item[data-day="14"] { grid-area: day14; }
+    .day-item[data-day="15"] { grid-area: day15; }
+    .day-item[data-day="16"] { grid-area: day16; }
+    .day-item[data-day="17"] { grid-area: day17; }
+    .day-item[data-day="18"] { grid-area: day18; }
+    .day-item[data-day="19"] { grid-area: day19; }
+    .day-item[data-day="20"] { grid-area: day20; }
+    .day-item[data-day="21"] { grid-area: day21; }
+    .day-item[data-day="22"] { grid-area: day22; }
+    .day-item[data-day="23"] { grid-area: day23; }
+    .day-item[data-day="24"] { grid-area: day24; }
+
+    .day-item[data-day="24"] .day-door {
+      font-size: 6rem;
+    }
+
+    .day-door {
+      width: 100%;
+      height: 100%;
+      background: rgba(173, 216, 230, 0.5);
+      border: 4px solid rgba(135, 206, 235, 0.7);
+      /* backdrop-filter: blur(5px); */ /* Désactivé - ne fonctionne pas avec FiveM NUI */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: bold;
+      color: #1a5f7a;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      position: relative;
+    }
+
+    .day-door:hover {
+      border-color: rgba(70, 130, 180, 1);
+      border-width: 5px;
+      background: rgba(173, 216, 230, 0.7);
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(135, 206, 235, 1);
+    }
+
+    .day-door.opened {
+      background: rgba(34, 139, 34, 0.7);
+      border-color: rgba(0, 100, 0, 1);
+      color: #ffffff;
+    }
+
+    .day-door.opened:hover {
+      background: rgba(34, 139, 34, 0.8);
+      border-color: rgba(0, 80, 0, 1);
+      transform: none;
+      box-shadow: none;
+    }
+
+    .day-door.missed,
+    .day-door.locked {
+      pointer-events: none;
+    }
+
+    .day-door.missed:hover,
+    .day-door.locked:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .day-door.current {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+      }
+      50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+      }
+    }
+
+    /* Animation du cadeau */
+    .gift-box-container {
+      width: 200px;
+      height: 200px;
+      perspective: 400px;
+      cursor: pointer;
+      transition: transform 0.3s;
+      opacity: 0;
+      transform: scale(0.5);
+      animation: popIn 0.4s ease-out 0.2s forwards;
+    }
+
+    /* Après l'animation initiale, garder le cadeau visible */
+    .gift-box-container.loaded {
+      opacity: 1 !important;
+      transform: scale(1) !important;
+      animation: none !important;
+    }
+
+    @keyframes popIn {
+      0% {
+        opacity: 0;
+        transform: scale(0.5);
+      }
+      60% {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .gift-box-container:hover {
+      transform: scale(1.05) !important;
+    }
+
+    .gift-box-container.shake {
+      animation: shake 0.5s !important;
+    }
+
+    @keyframes shake {
+      0%, 100% {
+        transform: translateX(0) scale(1);
+        opacity: 1 !important;
+      }
+      25% {
+        transform: translateX(-10px) scale(1.05);
+        opacity: 1 !important;
+      }
+      75% {
+        transform: translateX(10px) scale(1.05);
+        opacity: 1 !important;
+      }
+    }
+
+    .gift-box {
+      --gift-box-color: #e63946;
+      --gift-box-edge-color: #590b11;
+      --wrap-color: #f1faee;
+      --wrap-ribbon-color: #c0e4e6;
+      --wrap-top-color: #d8efef;
+
+      width: 200px;
+      height: 200px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 1s;
+      animation: rotation-3d 20s infinite linear;
+    }
+
+    .gift-box.paused {
+      animation-play-state: paused;
+    }
+
+    /* Rotation vers un angle optimal avant l'ouverture */
+    .gift-box.rotating-to-open {
+      animation: rotateToOptimalAngle 1s ease-out forwards !important;
+    }
+
+    @keyframes rotateToOptimalAngle {
+      to {
+        transform: translateZ(-100px) rotateY(45deg) rotateX(-10deg) rotateZ(-30deg);
+      }
+    }
+
+    @keyframes rotation-3d {
+      from {
+        transform: translateZ(-100px) rotateY(50deg) rotateX(-5deg) rotateZ(-30deg);
+      }
+      to {
+        transform: translateZ(-100px) rotateY(409deg) rotateX(-5deg) rotateZ(-30deg);
+      }
+    }
+
+    .gift-box .gift-box__side,
+    .gift-box .gift-box__end {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border: 2px solid var(--gift-box-edge-color);
+    }
+
+    .gift-box .gift-box-lid__side {
+      position: absolute;
+      width: 220px;
+      height: 50px;
+      border: 2px solid var(--gift-box-edge-color);
+    }
+
+    .gift-box .gift-box-lid__end {
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      border: 2px solid var(--gift-box-edge-color);
+    }
+
+    .gift-box .gift-box__side--front { transform: rotateY(0deg) translateZ(100px); }
+    .gift-box .gift-box__side--back { transform: rotateY(180deg) translateZ(100px); }
+    .gift-box .gift-box__side--left { transform: rotateY(-90deg) translateZ(100px); }
+    .gift-box .gift-box__side--right { transform: rotateY(90deg) translateZ(100px); }
+    .gift-box .gift-box__side--top { transform: rotateX(90deg) translateZ(100px); }
+    .gift-box .gift-box__side--bottom { transform: rotateX(-90deg) translateZ(100px); }
+
+    .gift-box .gift-box-lid__side--front { transform: rotateY(0deg) translateZ(110px) translateX(-10px) translateY(-10px); }
+    .gift-box .gift-box-lid__side--back { transform: rotateY(180deg) translateZ(110px) translateX(10px) translateY(-10px); }
+    .gift-box .gift-box-lid__side--left { transform: rotateY(-90deg) translateZ(120px) translateY(-10px); }
+    .gift-box .gift-box-lid__side--right { transform: rotateY(90deg) translateZ(100px) translateY(-10px); }
+    .gift-box .gift-box-lid__side--top { transform: rotateX(90deg) translateZ(120px) translateX(-10px) translateY(0); }
+
+    /* Conteneur du couvercle */
+    .lid-wrapper {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 1.5s ease-in-out;
+      transform-origin: center center;
+    }
+
+    /* Animation d'ouverture du couvercle entier */
+    .gift-box.opened .lid-wrapper {
+      transform: translateY(-200px) translateZ(0px);
+    }
+
+    .gift-box .gift-box__side,
+    .gift-box .gift-box-lid__side {
+      background: linear-gradient(to right,
+        var(--gift-box-color) 40%,
+        var(--wrap-color) 40%,
+        var(--wrap-color) 60%,
+        var(--gift-box-color) 60%
+      );
+    }
+
+    .gift-box .gift-box__end,
+    .gift-box .gift-box-lid__end {
+      background: linear-gradient(to right,
+        transparent 40%,
+        var(--wrap-top-color) 40%,
+        var(--wrap-top-color) 60%,
+        transparent 60%
+      ),
+      linear-gradient(to bottom,
+        var(--gift-box-color) 40%,
+        var(--wrap-color) 40%,
+        var(--wrap-color) 60%,
+        var(--gift-box-color) 60%
+      );
+    }
+
+    .gift-box-lid__side {
+      position: absolute;
+      width: 220px;
+      height: 50px;
+      border: 2px solid var(--gift-box-edge-color);
+      background: linear-gradient(to right, var(--gift-box-color) 40%, var(--wrap-color) 40%, var(--wrap-color) 60%, var(--gift-box-color) 60%);
+    }
+
+    .gift-box-lid__end {
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      border: 2px solid var(--gift-box-edge-color);
+      background: linear-gradient(to right, transparent 40%, var(--wrap-color) 40%, var(--wrap-color) 60%, transparent 60%),
+                  linear-gradient(to bottom, var(--gift-box-color) 40%, var(--wrap-color) 40%, var(--wrap-color) 60%, var(--gift-box-color) 60%);
+    }
+
+    .gift-box-lid__side--front { transform: rotateY(0deg) translateZ(110px) translateX(-10px) translateY(-10px); }
+    .gift-box-lid__side--back { transform: rotateY(180deg) translateZ(110px) translateX(10px) translateY(-10px); }
+    .gift-box-lid__side--left { transform: rotateY(-90deg) translateZ(120px) translateY(-10px); }
+    .gift-box-lid__side--right { transform: rotateY(90deg) translateZ(100px) translateY(-10px); }
+    .gift-box-lid__side--top { transform: rotateX(90deg) translateZ(120px) translateX(-10px) translateY(0); }
+
+    /* ========== EFFET DE LUMIÈRE ========== */
+
+    /* Lumière sur les bords supérieurs des 4 faces du cube */
+    .gift-box__side::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 12px;
+      background: linear-gradient(to bottom,
+        rgba(255, 215, 0, 0.8) 0%,
+        rgba(255, 215, 0, 0.5) 40%,
+        transparent 100%
+      );
+      box-shadow:
+        0 0 25px 8px rgba(255, 215, 0, 0.8),
+        0 0 45px 15px rgba(255, 200, 0, 0.6),
+        0 0 65px 20px rgba(255, 180, 0, 0.3);
+      opacity: 0;
+      transition: opacity 0.5s ease-in;
+      filter: blur(3px);
+    }
+
+    .gift-box.opened .gift-box__side::before {
+      opacity: 1;
+      animation: edgeGlow 2s ease-in-out infinite;
+    }
+
+    @keyframes edgeGlow {
+      0%, 100% {
+        box-shadow:
+          0 0 25px 8px rgba(255, 215, 0, 0.8),
+          0 0 45px 15px rgba(255, 200, 0, 0.6),
+          0 0 65px 20px rgba(255, 180, 0, 0.3);
+      }
+      50% {
+        box-shadow:
+          0 0 35px 10px rgba(255, 215, 0, 1),
+          0 0 60px 20px rgba(255, 200, 0, 0.8),
+          0 0 85px 30px rgba(255, 180, 0, 0.5);
+      }
+    }
+
+    /* Confettis */
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    @keyframes confetti-fall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* Lueur ambiante autour du cadeau */
+    .ambient-glow {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle,
+        rgba(255, 215, 0, 0.5) 0%,
+        rgba(255, 195, 0, 0.3) 30%,
+        rgba(255, 180, 0, 0.15) 60%,
+        transparent 80%);
+      border-radius: 50%;
+      opacity: 0;
+      filter: blur(35px);
+      animation: none;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .gift-box.opened .ambient-glow {
+      opacity: 1;
+      animation: glowPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.75;
+      }
+      50% {
+        transform: translate(-50%, -50%) scale(1.25);
+        opacity: 1;
+      }
+    }
+
+    .gift-box .ribbon-l {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      border: 2px solid var(--wrap-ribbon-color);
+      border-radius: 50% 50% 0 50%;
+      transform-style: preserve-3d;
+      transform-origin: 50% 50%;
+      transform: rotateX(75deg)
+                 rotateY(90deg)
+                 translateZ(calc(80px - var(--gift-box-position)))
+                 translateX(-85px)
+                 translateY(-75px)
+                 skewY(30deg);
+    }
+
+    .gift-box .ribbon-r {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      border: 2px solid var(--wrap-ribbon-color);
+      border-radius: 50% 50% 0 50%;
+      transform-style: preserve-3d;
+      transform-origin: 50% 50%;
+      transform: rotateX(-5deg)
+                 rotateY(90deg)
+                 translateZ(calc(80px - var(--gift-box-position)))
+                 translateX(-30px)
+                 translateY(-110px)
+                 skewY(30deg);
+    }
+
+    .ribbon-l-end {
+      position: absolute;
+      width: 40px;
+      height: 110px;
+      background:
+        linear-gradient(45deg, var(--wrap-top-color) 72%, transparent 72%),
+        linear-gradient(-45deg, var(--wrap-top-color) 72%, transparent 72%);
+      border: 2px solid var(--gift-box-edge-color);
+      border-top: none;
+      border-bottom: none;
+      transform: rotateX(-70deg) translateX(80px) translateY(-80px) translateZ(-60px);
+    }
+
+    .ribbon-r-end {
+      position: absolute;
+      width: 40px;
+      height: 110px;
+      background:
+        linear-gradient(45deg, var(--wrap-top-color) 72%, transparent 72%),
+        linear-gradient(-45deg, var(--wrap-top-color) 72%, transparent 72%);
+      border: 2px solid var(--gift-box-edge-color);
+      border-top: none;
+      border-bottom: none;
+      transform: rotateX(80deg) translateX(80px) translateY(-80px) translateZ(60px);
+    }
+  </style>
+</head>
+<body>
+  <!-- Container du calendrier -->
+  <div id="calendar-container">
+    <!-- Effet de neige -->
+    <div id="snowflakes"></div>
+
+    <!-- Grille du calendrier -->
+    <div class="calendar-grid">
+      <!-- Titre -->
+      <div class="title">
+        <h1>
+          <span class="title-1">Nova</span>
+          <span class="title-2">Christmas</span>
+          <span class="title-3">Calendar</span>
+        </h1>
+      </div>
+
+      <!-- 24 cases du calendrier -->
+      <div class="day-item" data-day="1"><div class="day-door">1</div></div>
+      <div class="day-item" data-day="2"><div class="day-door">2</div></div>
+      <div class="day-item" data-day="3"><div class="day-door">3</div></div>
+      <div class="day-item" data-day="4"><div class="day-door">4</div></div>
+      <div class="day-item" data-day="5"><div class="day-door">5</div></div>
+      <div class="day-item" data-day="6"><div class="day-door">6</div></div>
+      <div class="day-item" data-day="7"><div class="day-door">7</div></div>
+      <div class="day-item" data-day="8"><div class="day-door">8</div></div>
+      <div class="day-item" data-day="9"><div class="day-door">9</div></div>
+      <div class="day-item" data-day="10"><div class="day-door">10</div></div>
+      <div class="day-item" data-day="11"><div class="day-door">11</div></div>
+      <div class="day-item" data-day="12"><div class="day-door">12</div></div>
+      <div class="day-item" data-day="13"><div class="day-door">13</div></div>
+      <div class="day-item" data-day="14"><div class="day-door">14</div></div>
+      <div class="day-item" data-day="15"><div class="day-door">15</div></div>
+      <div class="day-item" data-day="16"><div class="day-door">16</div></div>
+      <div class="day-item" data-day="17"><div class="day-door">17</div></div>
+      <div class="day-item" data-day="18"><div class="day-door">18</div></div>
+      <div class="day-item" data-day="19"><div class="day-door">19</div></div>
+      <div class="day-item" data-day="20"><div class="day-door">20</div></div>
+      <div class="day-item" data-day="21"><div class="day-door">21</div></div>
+      <div class="day-item" data-day="22"><div class="day-door">22</div></div>
+      <div class="day-item" data-day="23"><div class="day-door">23</div></div>
+      <div class="day-item" data-day="24"><div class="day-door">24</div></div>
+    </div>
+  </div>
+
+  <!-- Container du cadeau (superposition) -->
+  <div id="gift-container">
+    <div class="instruction" id="instruction">Clique sur le cadeau pour l'ouvrir !</div>
+
+    <div class="gift-box-container" id="giftBoxContainer">
+      <!-- Lueur ambiante autour du cadeau -->
+      <div class="ambient-glow"></div>
+
+      <div class="gift-box" id="giftBox">
+        <!-- Côtés de la boîte -->
+        <div class="gift-box__side gift-box__side--front"></div>
+        <div class="gift-box__side gift-box__side--back"></div>
+        <div class="gift-box__side gift-box__side--left"></div>
+        <div class="gift-box__side gift-box__side--right"></div>
+        <div class="gift-box__end gift-box__side--bottom"></div>
+
+        <!-- Couvercle -->
+        <div class="lid-wrapper" id="lidWrapper">
+          <div class="gift-box-lid__side gift-box-lid__side--front"></div>
+          <div class="gift-box-lid__side gift-box-lid__side--back"></div>
+          <div class="gift-box-lid__side gift-box-lid__side--left"></div>
+          <div class="gift-box-lid__side gift-box-lid__side--right"></div>
+          <div class="gift-box-lid__end gift-box-lid__side--top"></div>
+
+          <!-- Les rubans seront générés par JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
