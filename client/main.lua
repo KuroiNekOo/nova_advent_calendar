@@ -32,6 +32,7 @@ function OpenCalendar()
             openedDays = data.openedDays,
             currentDay = data.currentDay,
             currentMonth = data.currentMonth,
+            catchupRange = data.catchupRange,
             debugMode = Config.DebugMode
         })
 

@@ -1,6 +1,7 @@
 // État du calendrier
 let openedDays = [];
 let currentDay = 1;
+let catchupRange = null; // { minDay, maxDay } si mode rattrapage actif
 let calendarOpen = false;
 let giftAnimationOpen = false;
 let isGiftOpened = false;
@@ -108,6 +109,7 @@ window.addEventListener('message', function(event) {
 function openCalendar(data) {
   openedDays = data.openedDays || [];
   currentDay = data.currentDay || 1;
+  catchupRange = data.catchupRange || null; // { minDay, maxDay } si mode rattrapage
   calendarOpen = true;
 
   calendarContainer.classList.add('visible');
@@ -132,7 +134,21 @@ function initializeCalendar() {
 
 // Déterminer l'état d'un jour
 function getDayState(day) {
+  // Toujours vérifier si déjà ouvert en premier
   if (openedDays.includes(day)) return 'opened';
+
+  // Mode rattrapage : utiliser l'intervalle [minDay, maxDay]
+  if (catchupRange) {
+    if (day >= catchupRange.minDay && day <= catchupRange.maxDay) {
+      return 'current'; // Récupérable (cliquable)
+    } else if (day < catchupRange.minDay) {
+      return 'missed'; // Trop ancien pour être récupéré
+    } else {
+      return 'locked'; // Pas encore disponible
+    }
+  }
+
+  // Mode normal : seul le jour actuel est cliquable
   if (day === currentDay) return 'current';
   if (day < currentDay) return 'missed';
   if (day > currentDay) return 'locked';

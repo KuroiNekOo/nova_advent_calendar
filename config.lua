@@ -15,8 +15,9 @@ Config.CatchupMode = {
     -- Activer le mode rattrapage
     enabled = true,
 
-    -- Jour maximum récupérable pendant la période de rattrapage (1-24)
-    -- Ex: 6 = les joueurs peuvent récupérer les jours 1, 2, 3, 4, 5, 6
+    -- Intervalle de jours récupérables pendant la période de rattrapage (1-24)
+    -- Ex: minDay = 2, maxDay = 14 = les joueurs peuvent récupérer les jours 2 à 14
+    minDay = 1,
     maxDay = 6,
 
     -- Date/heure de fin de la période de rattrapage

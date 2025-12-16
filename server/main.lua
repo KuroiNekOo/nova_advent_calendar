@@ -64,10 +64,14 @@ ESX.RegisterServerCallback('esx_advent_calendar:getCalendarData', function(sourc
         currentDay = Config.DebugDay
     end
 
-    -- Mode rattrapage : simuler le jour maxDay si la période est active
+    -- Mode rattrapage : envoyer l'intervalle récupérable
+    local catchupRange = nil
     if isCatchupPeriodActive() then
         currentMonth = Config.Month
-        currentDay = Config.CatchupMode.maxDay
+        catchupRange = {
+            minDay = Config.CatchupMode.minDay or 1,
+            maxDay = Config.CatchupMode.maxDay
+        }
     end
 
     -- Récupérer les jours ouverts de la base de données
@@ -84,7 +88,8 @@ ESX.RegisterServerCallback('esx_advent_calendar:getCalendarData', function(sourc
             openedDays = openedDays,
             currentDay = currentDay,
             currentMonth = currentMonth,
-            currentYear = currentYear
+            currentYear = currentYear,
+            catchupRange = catchupRange
         })
     end)
 end)
@@ -105,23 +110,29 @@ ESX.RegisterServerCallback('esx_advent_calendar:canOpenDay', function(source, cb
         currentDay = Config.DebugDay
     end
 
-    -- Mode rattrapage : simuler le jour maxDay si la période est active
-    if isCatchupPeriodActive() then
-        currentMonth = Config.Month
-        currentDay = Config.CatchupMode.maxDay
-    end
-
     -- Vérifier le mois
     if not Config.DebugMode and not isCatchupPeriodActive() and currentMonth ~= Config.Month then
         return cb(false, 'Le calendrier de l\'avent n\'est pas disponible ce mois ci !')
     end
 
-    -- On ne peut ouvrir QUE le jour actuel
-    if day ~= currentDay then
-        if day > currentDay then
-            return cb(false, 'Ce jour n\'est pas encore arrivé!')
-        else
-            return cb(false, 'Ce jour est passé, vous l\'avez loupé!')
+    -- Mode rattrapage : vérifier si le jour est dans l'intervalle récupérable
+    if isCatchupPeriodActive() then
+        local minDay = Config.CatchupMode.minDay or 1
+        local maxDay = Config.CatchupMode.maxDay
+
+        if day < minDay then
+            return cb(false, 'Ce jour n\'est plus récupérable!')
+        elseif day > maxDay then
+            return cb(false, 'Ce jour n\'est pas encore disponible!')
+        end
+    else
+        -- Mode normal : on ne peut ouvrir QUE le jour actuel
+        if day ~= currentDay then
+            if day > currentDay then
+                return cb(false, 'Ce jour n\'est pas encore arrivé!')
+            else
+                return cb(false, 'Ce jour est passé, vous l\'avez loupé!')
+            end
         end
     end
 
@@ -130,7 +141,7 @@ ESX.RegisterServerCallback('esx_advent_calendar:canOpenDay', function(source, cb
         identifier, day, currentYear
     }, function(result)
         if result and #result > 0 then
-            return cb(false, 'Vous avez déjà ouvert cette case aujourd\'hui!')
+            return cb(false, 'Vous avez déjà ouvert cette case!')
         end
 
         cb(true)
@@ -154,12 +165,6 @@ RegisterServerEvent('esx_advent_calendar:openDay', function(day)
         currentDay = Config.DebugDay
     end
 
-    -- Mode rattrapage : simuler le jour maxDay si la période est active
-    if isCatchupPeriodActive() then
-        currentMonth = Config.Month
-        currentDay = Config.CatchupMode.maxDay
-    end
-
     -- Double vérification côté serveur
     if not Config.DebugMode and not isCatchupPeriodActive() and currentMonth ~= Config.Month then
         TriggerClientEvent('ox_lib:notify', _source, {
@@ -171,23 +176,48 @@ RegisterServerEvent('esx_advent_calendar:openDay', function(day)
         return
     end
 
-    if day ~= currentDay then
-        if day > currentDay then
+    -- Mode rattrapage : vérifier si le jour est dans l'intervalle récupérable
+    if isCatchupPeriodActive() then
+        local minDay = Config.CatchupMode.minDay or 1
+        local maxDay = Config.CatchupMode.maxDay
+
+        if day < minDay then
             TriggerClientEvent('ox_lib:notify', _source, {
                 title = 'Calendrier de l\'Avent',
-                description = 'Ce jour n\'est pas encore arrivé!',
+                description = 'Ce jour n\'est plus récupérable!',
                 type = 'error',
                 duration = 5000
             })
-        else
+            return
+        elseif day > maxDay then
             TriggerClientEvent('ox_lib:notify', _source, {
                 title = 'Calendrier de l\'Avent',
-                description = 'Ce jour est passé, vous l\'avez loupé!',
+                description = 'Ce jour n\'est pas encore disponible!',
                 type = 'error',
                 duration = 5000
             })
+            return
         end
-        return
+    else
+        -- Mode normal : vérifier le jour actuel
+        if day ~= currentDay then
+            if day > currentDay then
+                TriggerClientEvent('ox_lib:notify', _source, {
+                    title = 'Calendrier de l\'Avent',
+                    description = 'Ce jour n\'est pas encore arrivé!',
+                    type = 'error',
+                    duration = 5000
+                })
+            else
+                TriggerClientEvent('ox_lib:notify', _source, {
+                    title = 'Calendrier de l\'Avent',
+                    description = 'Ce jour est passé, vous l\'avez loupé!',
+                    type = 'error',
+                    duration = 5000
+                })
+            end
+            return
+        end
     end
 
     -- Vérifier si le jour est déjà ouvert dans la base de données
