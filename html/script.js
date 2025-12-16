@@ -137,7 +137,10 @@ function getDayState(day) {
   // Toujours vérifier si déjà ouvert en premier
   if (openedDays.includes(day)) return 'opened';
 
-  // Mode rattrapage : utiliser l'intervalle [minDay, maxDay]
+  // Le jour actuel est toujours cliquable (mode normal)
+  if (day === currentDay) return 'current';
+
+  // Mode rattrapage : les jours dans l'intervalle sont aussi cliquables
   if (catchupRange) {
     if (day >= catchupRange.minDay && day <= catchupRange.maxDay) {
       return 'current'; // Récupérable (cliquable)
@@ -148,8 +151,7 @@ function getDayState(day) {
     }
   }
 
-  // Mode normal : seul le jour actuel est cliquable
-  if (day === currentDay) return 'current';
+  // Mode normal sans rattrapage
   if (day < currentDay) return 'missed';
   if (day > currentDay) return 'locked';
   return 'locked';
