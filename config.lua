@@ -6,6 +6,30 @@ Config.DebugMode = false
 -- Jour simulé en mode debug (1-24)
 Config.DebugDay = 4
 
+-- =============================================================================
+-- MODE RATTRAPAGE
+-- Permet aux joueurs de récupérer les récompenses des jours passés
+-- pendant une période limitée (ex: jours 1-6 jusqu'au 17/12/2025 à 5h00)
+-- =============================================================================
+Config.CatchupMode = {
+    -- Activer le mode rattrapage
+    enabled = true,
+
+    -- Jour maximum récupérable pendant la période de rattrapage (1-24)
+    -- Ex: 6 = les joueurs peuvent récupérer les jours 1, 2, 3, 4, 5, 6
+    maxDay = 6,
+
+    -- Date/heure de fin de la période de rattrapage
+    -- Après cette date, les jours non récupérés seront marqués comme "manqués"
+    endDate = {
+        year = 2025,
+        month = 12,
+        day = 17,
+        hour = 5,
+        minute = 0
+    }
+}
+
 -- Commande pour ouvrir le calendrier
 Config.Command = 'calendar'
 

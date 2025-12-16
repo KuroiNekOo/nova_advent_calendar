@@ -1,3 +1,23 @@
+-- Fonction helper pour vérifier si on est dans la période de rattrapage
+local function isCatchupPeriodActive()
+    if not Config.CatchupMode or not Config.CatchupMode.enabled then
+        return false
+    end
+
+    local endDate = Config.CatchupMode.endDate
+    local currentTime = os.time()
+    local endTime = os.time({
+        year = endDate.year,
+        month = endDate.month,
+        day = endDate.day,
+        hour = endDate.hour,
+        min = endDate.minute,
+        sec = 0
+    })
+
+    return currentTime < endTime
+end
+
 -- Créer la table automatiquement au démarrage
 MySQL.query([[
     CREATE TABLE IF NOT EXISTS `advent_calendar` (
@@ -44,6 +64,12 @@ ESX.RegisterServerCallback('esx_advent_calendar:getCalendarData', function(sourc
         currentDay = Config.DebugDay
     end
 
+    -- Mode rattrapage : simuler le jour maxDay si la période est active
+    if isCatchupPeriodActive() then
+        currentMonth = Config.Month
+        currentDay = Config.CatchupMode.maxDay
+    end
+
     -- Récupérer les jours ouverts de la base de données
     MySQL.query('SELECT day FROM advent_calendar WHERE identifier = ? AND year = ?', {
         identifier, currentYear
@@ -79,8 +105,14 @@ ESX.RegisterServerCallback('esx_advent_calendar:canOpenDay', function(source, cb
         currentDay = Config.DebugDay
     end
 
+    -- Mode rattrapage : simuler le jour maxDay si la période est active
+    if isCatchupPeriodActive() then
+        currentMonth = Config.Month
+        currentDay = Config.CatchupMode.maxDay
+    end
+
     -- Vérifier le mois
-    if not Config.DebugMode and currentMonth ~= Config.Month then
+    if not Config.DebugMode and not isCatchupPeriodActive() and currentMonth ~= Config.Month then
         return cb(false, 'Le calendrier de l\'avent n\'est pas disponible ce mois ci !')
     end
 
@@ -122,8 +154,14 @@ RegisterServerEvent('esx_advent_calendar:openDay', function(day)
         currentDay = Config.DebugDay
     end
 
+    -- Mode rattrapage : simuler le jour maxDay si la période est active
+    if isCatchupPeriodActive() then
+        currentMonth = Config.Month
+        currentDay = Config.CatchupMode.maxDay
+    end
+
     -- Double vérification côté serveur
-    if not Config.DebugMode and currentMonth ~= Config.Month then
+    if not Config.DebugMode and not isCatchupPeriodActive() and currentMonth ~= Config.Month then
         TriggerClientEvent('ox_lib:notify', _source, {
             title = 'Calendrier de l\'Avent',
             description = 'Le calendrier de l\'avent n\'est disponible qu\'en décembre!',
